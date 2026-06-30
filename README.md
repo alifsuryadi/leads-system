@@ -1,6 +1,20 @@
-# Leads Management System
+<h1 align="center">Leads Management System</h1>
 
-Full-stack engineering assessment untuk **Usaha Kreatif Indonesia** — mencakup REST API, antrian pesan asinkron, dan microservice AI analisis sentimen.
+<p align="center">
+  <img src="https://img.shields.io/badge/-NestJS-05122A?style=flat&logo=nestjs&logoColor=E0234E">&nbsp;
+  <img src="https://img.shields.io/badge/-Next.js-05122A?style=flat&logo=next.js">&nbsp;
+  <img src="https://img.shields.io/badge/-TypeScript-05122A?style=flat&logo=typescript">&nbsp;
+  <img src="https://img.shields.io/badge/-Python-05122A?style=flat&logo=python">&nbsp;
+  <img src="https://img.shields.io/badge/-FastAPI-05122A?style=flat&logo=fastapi">&nbsp;
+  <img src="https://img.shields.io/badge/-Prisma-05122A?style=flat&logo=prisma">&nbsp;
+  <img src="https://img.shields.io/badge/-PostgreSQL-05122A?style=flat&logo=postgresql">&nbsp;
+  <img src="https://img.shields.io/badge/-Redis-05122A?style=flat&logo=redis">&nbsp;
+  <img src="https://img.shields.io/badge/-BullMQ-05122A?style=flat&logo=bull&logoColor=red">&nbsp;
+  <img src="https://img.shields.io/badge/-Docker-05122A?style=flat&logo=docker">&nbsp;
+  <img src="https://img.shields.io/badge/-Tailwind_CSS-05122A?style=flat&logo=tailwind-css">&nbsp;
+</p>
+
+Full-stack engineering assessment — mencakup REST API, antrian pesan asinkron, dan microservice AI analisis sentimen.
 
 ---
 
