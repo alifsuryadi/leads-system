@@ -1,10 +1,100 @@
-# Leads Management System
+<h1 align="center">Leads Management System</h1>
 
-Full-stack engineering assessment for **Usaha Kreatif Indonesia**.
+<p align="center">
+  <img src="https://img.shields.io/badge/-NestJS-05122A?style=flat&logo=nestjs&logoColor=E0234E">&nbsp;
+  <img src="https://img.shields.io/badge/-Next.js-05122A?style=flat&logo=next.js">&nbsp;
+  <img src="https://img.shields.io/badge/-TypeScript-05122A?style=flat&logo=typescript">&nbsp;
+  <img src="https://img.shields.io/badge/-Python-05122A?style=flat&logo=python">&nbsp;
+  <img src="https://img.shields.io/badge/-FastAPI-05122A?style=flat&logo=fastapi">&nbsp;
+  <img src="https://img.shields.io/badge/-Prisma-05122A?style=flat&logo=prisma">&nbsp;
+  <img src="https://img.shields.io/badge/-PostgreSQL-05122A?style=flat&logo=postgresql">&nbsp;
+  <img src="https://img.shields.io/badge/-Redis-05122A?style=flat&logo=redis">&nbsp;
+  <img src="https://img.shields.io/badge/-BullMQ-05122A?style=flat&logo=bull&logoColor=red">&nbsp;
+  <img src="https://img.shields.io/badge/-Docker-05122A?style=flat&logo=docker">&nbsp;
+  <img src="https://img.shields.io/badge/-Tailwind_CSS-05122A?style=flat&logo=tailwind-css">&nbsp;
+</p>
+
+Full-stack engineering assessment — mencakup REST API, antrian pesan asinkron, dan microservice AI analisis sentimen.
 
 ---
 
-## Installation
+## Daftar Isi
+
+- [Gambaran Proyek](#gambaran-proyek)
+- [Tech Stack](#tech-stack)
+- [Arsitektur](#arsitektur)
+- [Instalasi](#instalasi)
+- [API Reference](#api-reference)
+- [Task Coverage](#task-coverage)
+- [Struktur Proyek](#struktur-proyek)
+
+---
+
+## Gambaran Proyek
+
+Sistem manajemen leads yang terdiri dari 5 service yang berjalan bersamaan via Docker Compose:
+
+| Service | Fungsi |
+|---------|--------|
+| **Frontend** | Form input lead, tabel paginasi, dan UI analisis sentimen |
+| **Backend** | REST API untuk CRUD lead; mempublish job ke queue saat lead dibuat |
+| **Worker** | Konsumsi job dari Redis queue secara asinkron (simulasi kirim email / sync CRM) |
+| **AI Service** | Analisis sentimen berbasis rule/keyword, diakses via proxy NestJS |
+| **Database** | PostgreSQL menyimpan data lead secara persisten |
+
+**Alur utama:**
+1. User mengisi form di frontend → `POST /leads` → lead tersimpan di PostgreSQL
+2. Backend langsung mempublish job ke Redis queue (`leads`) — proses asinkron
+3. Worker mengkonsumsi job dan mencatat log (simulasi welcome email / CRM sync)
+4. User mengetik teks bebas di Sentiment Analyzer → `POST /sentiment/analyze` → AI service mengembalikan sentimen, confidence, dan keyword yang cocok
+
+---
+
+## Tech Stack
+
+| Layer | Teknologi |
+|-------|-----------|
+| Frontend | Next.js 14 (App Router), Tailwind CSS, react-hook-form |
+| Backend | NestJS 10, Prisma ORM, BullMQ, class-validator |
+| Worker | Node.js standalone, BullMQ |
+| AI Service | Python 3.11, FastAPI, Pydantic |
+| Database | PostgreSQL 15 |
+| Queue | Redis 7 |
+| Container | Docker, Docker Compose |
+
+---
+
+## Arsitektur
+
+```
+┌─────────────┐    HTTP     ┌──────────────────────────────────────────┐
+│  Next.js    │ ──────────► │  NestJS Backend  (port 3001)             │
+│  Frontend   │             │  POST /leads                             │
+│  (port 3000)│             │  GET  /leads?page=1&limit=10             │
+└─────────────┘             │  POST /sentiment/analyze (proxy to AI)   │
+                            └──────────────────┬─────────────────┬──────┘
+                                               │ BullMQ          │ HTTP
+                                               ▼                 ▼
+                                        ┌──────────┐   ┌─────────────────┐
+                                        │  Redis   │   │  Python FastAPI  │
+                                        │ (Queue)  │   │  AI Service      │
+                                        └────┬─────┘   │  (port 8000)    │
+                                             │          └─────────────────┘
+                                             ▼ consume
+                                        ┌──────────┐
+                                        │  Worker  │
+                                        │ (BullMQ) │
+                                        └──────────┘
+
+                            ┌──────────────┐
+                            │  PostgreSQL  │
+                            │  (port 5432) │
+                            └──────────────┘
+```
+
+---
+
+## Instalasi
 
 ### Prasyarat
 
@@ -91,51 +181,12 @@ NEXT_PUBLIC_API_URL=http://localhost:3001 npm run dev
 
 ---
 
-## Architecture
+## API Reference
 
-```
-┌─────────────┐    HTTP     ┌──────────────────────────────────────────┐
-│  Next.js    │ ──────────► │  NestJS Backend  (port 3001)             │
-│  Frontend   │             │  POST /leads                             │
-│  (port 3000)│             │  GET  /leads?page=1&limit=10             │
-└─────────────┘             │  POST /sentiment/analyze (proxy to AI)   │
-                            └──────────────────┬─────────────────┬──────┘
-                                               │ BullMQ          │ HTTP
-                                               ▼                 ▼
-                                        ┌──────────┐   ┌─────────────────┐
-                                        │  Redis   │   │  Python FastAPI  │
-                                        │ (Queue)  │   │  AI Service      │
-                                        └────┬─────┘   │  (port 8000)    │
-                                             │          └─────────────────┘
-                                             ▼ consume
-                                        ┌──────────┐
-                                        │  Worker  │
-                                        │ (BullMQ) │
-                                        └──────────┘
+### `POST /leads` — Buat lead baru
 
-                            ┌──────────────┐
-                            │  PostgreSQL  │
-                            │  (port 5432) │
-                            └──────────────┘
-```
-
-## Services
-
-| Service     | Tech               | Port | Description                               |
-|-------------|-------------------|------|-------------------------------------------|
-| `frontend`  | Next.js 14        | 3000 | Lead form, table dengan pagination, AI UI |
-| `backend`   | NestJS + Prisma   | 3001 | REST API, queue publisher                 |
-| `worker`    | Node.js + BullMQ  | —    | Konsumsi lead queue, log email            |
-| `ai-service`| Python FastAPI    | 8000 | Analisis sentimen berbasis keyword        |
-| `postgres`  | PostgreSQL 15     | 5432 | Penyimpanan lead persisten                |
-| `redis`     | Redis 7           | 6379 | Backend queue BullMQ                      |
-
----
-
-## Task A — Full-Stack Feature
-
-### Create Lead
-```
+**Request:**
+```http
 POST http://localhost:3001/leads
 Content-Type: application/json
 
@@ -146,81 +197,76 @@ Content-Type: application/json
 }
 ```
 
-Validasi server-side (NestJS `class-validator`):
-- `name`: wajib, maks 100 karakter
-- `email`: wajib, format email valid
-- `campaignId`: wajib, maks 50 karakter, hanya huruf/angka/hyphen/underscore
-
-Validasi client-side (`react-hook-form`): aturan yang sama diterapkan sebelum request dikirim.
-
-### Get Leads (paginated)
+**Response `201 Created`:**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Budi Santoso",
+  "email": "budi@example.com",
+  "campaignId": "CAMP-2024-Q3",
+  "createdAt": "2024-10-01T08:00:00.000Z"
+}
 ```
+
+**Aturan validasi (berlaku di server dan client):**
+
+| Field | Aturan |
+|-------|--------|
+| `name` | Wajib, maks 100 karakter |
+| `email` | Wajib, format email valid |
+| `campaignId` | Wajib, maks 50 karakter, hanya huruf/angka/hyphen/underscore |
+
+---
+
+### `GET /leads` — Daftar lead dengan paginasi
+
+**Request:**
+```http
 GET http://localhost:3001/leads?page=1&limit=10
 ```
 
-Response:
+**Response `200 OK`:**
 ```json
 {
-  "data": [...],
-  "meta": { "total": 42, "page": 1, "limit": 10, "totalPages": 5 }
-}
-```
-
-### Database Schema (Prisma)
-```prisma
-model Lead {
-  id         String   @id @default(uuid())
-  name       String   @db.VarChar(100)
-  email      String   @db.VarChar(255)
-  campaignId String   @db.VarChar(50)
-  createdAt  DateTime @default(now())
-
-  @@index([campaignId])
-  @@index([createdAt])
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "Budi Santoso",
+      "email": "budi@example.com",
+      "campaignId": "CAMP-2024-Q3",
+      "createdAt": "2024-10-01T08:00:00.000Z"
+    }
+  ],
+  "meta": {
+    "total": 42,
+    "page": 1,
+    "limit": 10,
+    "totalPages": 5
+  }
 }
 ```
 
 ---
 
-## Task B — Messaging & Caching (Redis + BullMQ)
+### `POST /sentiment/analyze` — Analisis sentimen (via NestJS proxy)
 
-Saat lead dibuat, backend mempublish job ke queue `leads`:
+```http
+POST http://localhost:3001/sentiment/analyze
+Content-Type: application/json
 
-```typescript
-await this.leadsQueue.add('lead.created', payload, {
-  attempts: 3,
-  backoff: { type: 'exponential', delay: 1000 },
-  removeOnComplete: true,
-  removeOnFail: false,   // simpan job gagal untuk inspeksi
-});
+{ "text": "This product is amazing and I love using it!" }
 ```
 
-**Worker** (container terpisah) mengkonsumsi job dan mencetak log:
-```
-[Worker] Started — listening on "leads" queue...
-[Worker] Lead received: budi@example.com
-[Worker] → ID: uuid, Name: Budi Santoso, Campaign: CAMP-2024-Q3
-[Worker] Job 1 completed successfully
-```
+Atau langsung ke AI service:
 
-Retry behaviour:
-- Gagal ke-1 → tunggu 1 detik
-- Gagal ke-2 → tunggu 2 detik (exponential backoff)
-- Gagal ke-3 → permanent failure, job tetap tersimpan di Redis
-
----
-
-## Task C — Python AI Microservice
-
-### Analyze Sentiment
-```
+```http
 POST http://localhost:8000/analyze
 Content-Type: application/json
 
 { "text": "This product is amazing and I love using it!" }
 ```
 
-Response:
+**Response `200 OK`:**
 ```json
 {
   "text": "This product is amazing and I love using it!",
@@ -230,49 +276,88 @@ Response:
 }
 ```
 
-**Rule logic:**
-1. Tokenisasi teks menjadi kata-kata lowercase
-2. Hitung kecocokan terhadap kamus keyword positif/negatif
+**Logika rule-based:**
+1. Tokenisasi teks menjadi kata-kata lowercase (hapus tanda baca)
+2. Cocokkan dengan kamus keyword positif dan negatif
 3. `positive` menang jika `pos_count >= neg_count`
-4. Confidence = `winning_count / total_matches`
-5. Tidak ada keyword yang cocok → `negative` dengan confidence 0.5
-
-NestJS memproxy panggilan ke AI service via `POST /sentiment/analyze`.
+4. `confidence` = `winning_count / total_matches` (dibulatkan 2 desimal)
+5. Tidak ada keyword cocok → `negative` dengan `confidence: 0.5`
 
 ---
 
-## Project Structure
+## Task Coverage
+
+| Task | Komponen | Detail |
+|------|----------|--------|
+| **A** | `POST /leads` | Validasi server-side dengan `class-validator` |
+| **A** | `GET /leads` | Paginasi dengan `page`, `limit`, dan `meta` |
+| **A** | Database | Prisma schema: Lead (UUID, VarChar, index campaignId & createdAt) |
+| **A** | Frontend form | Validasi client-side dengan `react-hook-form` (aturan sama dengan server) |
+| **A** | Frontend table | Tabel leads dengan tombol Previous/Next |
+| **B** | Queue publish | Job dipublish ke BullMQ setelah `POST /leads` berhasil |
+| **B** | Worker | Container terpisah, mengkonsumsi queue `leads` secara asinkron |
+| **B** | Retry | 3 percobaan, exponential backoff (1s → 2s → permanent fail) |
+| **B** | Graceful shutdown | Worker menutup koneksi saat menerima `SIGTERM` |
+| **C** | FastAPI | `POST /analyze` dengan Pydantic validation |
+| **C** | Sentiment logic | Rule-based keyword matching, confidence score |
+| **C** | NestJS proxy | `POST /sentiment/analyze` → forward ke AI service |
+| **C** | Frontend UI | Sentiment Analyzer: hasil sentiment, confidence %, matched keywords |
+
+---
+
+## Struktur Proyek
 
 ```
 .
 ├── .gitignore
 ├── docker-compose.yml
 ├── README.md
-├── backend/               # NestJS REST API
+├── backend/                   # NestJS REST API
 │   ├── .env.example
 │   ├── Dockerfile
 │   ├── prisma/
-│   │   └── schema.prisma
+│   │   └── schema.prisma      # Model Lead
 │   └── src/
-│       ├── leads/         # Lead CRUD + queue publish
+│       ├── main.ts
+│       ├── app.module.ts
+│       ├── leads/             # Task A — CRUD + queue publish
 │       │   ├── dto/
+│       │   │   ├── create-lead.dto.ts
+│       │   │   └── query-leads.dto.ts
 │       │   ├── leads.controller.ts
 │       │   ├── leads.service.ts
 │       │   └── leads.module.ts
-│       ├── sentiment/     # Proxy ke AI service
-│       └── prisma/        # PrismaService (global module)
-├── worker/                # BullMQ consumer (Node.js standalone)
-│   └── src/main.ts
-├── ai-service/            # Python FastAPI sentiment analysis
+│       ├── sentiment/         # Task C — Proxy ke AI service
+│       │   ├── sentiment.controller.ts
+│       │   ├── sentiment.service.ts
+│       │   └── sentiment.module.ts
+│       └── prisma/            # PrismaService (global module)
+│           ├── prisma.service.ts
+│           └── prisma.module.ts
+├── worker/                    # Task B — BullMQ consumer
+│   ├── Dockerfile
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── src/
+│       └── main.ts
+├── ai-service/                # Task C — Python FastAPI
+│   ├── Dockerfile
 │   ├── main.py
 │   └── requirements.txt
-└── frontend/              # Next.js 14 App Router
+└── frontend/                  # Next.js 14 App Router
+    ├── Dockerfile
+    ├── next.config.ts
     └── src/
         ├── app/
+        │   ├── layout.tsx
+        │   ├── page.tsx
+        │   └── globals.css
         ├── components/
-        │   ├── LeadForm.tsx
-        │   ├── LeadsTable.tsx
-        │   └── SentimentAnalyzer.tsx
-        ├── lib/api.ts
-        └── types/lead.ts
+        │   ├── LeadForm.tsx        # Task A — form + validasi
+        │   ├── LeadsTable.tsx      # Task A — tabel + paginasi
+        │   └── SentimentAnalyzer.tsx  # Task C — UI sentimen
+        ├── lib/
+        │   └── api.ts              # Fetch helpers ke backend
+        └── types/
+            └── lead.ts             # TypeScript interfaces
 ```
